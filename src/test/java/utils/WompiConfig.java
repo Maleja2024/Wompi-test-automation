@@ -13,12 +13,13 @@ public class WompiConfig {
     public static final String TRANSACTIONS_ENDPOINT = "/transactions";
     public static final String ACCEPTANCE_TOKEN_ENDPOINT = "/merchants/pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7";
 
-    // Llaves de prueba - CORREGIDAS
+    // Llaves de prueba
     // El carácter Ǫ del documento era en realidad HQ (H mayúscula + Q mayúscula)
     // Verificado con: curl https://api-sandbox.co.uat.wompi.dev/v1/merchants/pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7
     public static final String PUBLIC_KEY = "pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7";
     public static final String PRIVATE_KEY = "prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg";
     public static final String INTEGRITY_KEY = "stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp";
+    public static final String EVENTS_KEY = "stagtest_events_2PDUmhMywUkvb1LvxYnayFbmofT7w39N";
 
     // Headers
     public static final String BEARER_PREFIX = "Bearer ";
@@ -30,6 +31,11 @@ public class WompiConfig {
     public static final String PSE_USER_LEGAL_ID = "123456789";
     public static final String PSE_FINANCIAL_INSTITUTION_CODE = "1040"; // Banco Agrario
     public static final String PSE_PAYMENT_DESCRIPTION = "Test payment with PSE";
+
+    // Tipos de eventos de webhooks
+    public static final String EVENT_TRANSACTION_UPDATED = "transaction.updated";
+    public static final String EVENT_PAYMENT_APPROVED = "payment.approved";
+    public static final String EVENT_PAYMENT_DECLINED = "payment.declined";
 
     private WompiConfig() {
         // Constructor privado para evitar instanciación

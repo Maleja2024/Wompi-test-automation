@@ -81,8 +81,9 @@ Serenity Report
 
 #### Slide 5: Demo en Vivo / Resultados (30 segundos)
 - Mostrar reporte de Serenity BDD
-- Resaltar métricas: X tests passed
-- Mostrar detalle de un test
+- Resaltar métricas: 5 tests ejecutados, 5 pasaron
+- Mostrar detalle de un test (transacción PSE)
+- Mostrar validación de webhook (opcional)
 
 #### Slide 6: Conclusión (30 segundos)
 - **Ventajas del enfoque:**

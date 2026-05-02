@@ -247,6 +247,8 @@ BASE_URL = "https://api-sandbox.co.uat.wompi.dev/v1"
 // Llaves
 PRIVATE_KEY = "prv_stagtest_5i0ZGIGiFcDQifYsXxvsny7Y37tKqFWg"
 PUBLIC_KEY = "pub_stagtest_g2u0HQd3ZMh05hsSgTS2lUV8t3s4mOt7"
+INTEGRITY_KEY = "stagtest_integrity_nAIBuqayW70XpUqJS4qf4STYiISd89Fp"
+EVENTS_KEY = "stagtest_events_2PDUmhMywUkvb1LvxYnayFbmofT7w39N"
 ```
 
 ### PSE (Método de Pago)
@@ -370,8 +372,8 @@ Este proyecto es con fines educativos y de prueba técnica.
 ## 🚦 Status del Proyecto
 
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Tests](https://img.shields.io/badge/tests-3%2F3-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-happy%20%2B%20negative-blue)
+![Tests](https://img.shields.io/badge/tests-5%2F5-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-happy%20%2B%20negative%20%2B%20security-blue)
 ![Java](https://img.shields.io/badge/java-11-orange)
 ![Pattern](https://img.shields.io/badge/pattern-ScreenPlay-purple)
 

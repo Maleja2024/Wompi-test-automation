@@ -345,6 +345,120 @@ public class WompiConfig {
 
 ---
 
+### 1b. WebhookValidator (utils/)
+
+**Ubicación:** `src/test/java/utils/WebhookValidator.java`
+
+**Propósito:** Validar la autenticidad e integridad de webhooks enviados por Wompi
+
+**¿Qué son los Webhooks de Wompi?**
+
+Los webhooks son notificaciones HTTP POST que Wompi envía automáticamente cuando:
+- 📊 Una transacción cambia de estado (PENDING → APPROVED)
+- ✅ Un pago es aprobado
+- ❌ Un pago es rechazado
+- 🔄 Ocurren eventos importantes en transacciones
+
+**¿Por qué validar la firma?**
+
+Cada webhook incluye una firma HMAC-SHA256 que permite:
+1. **Autenticidad:** Verificar que el webhook proviene realmente de Wompi
+2. **Integridad:** Confirmar que el payload no fue modificado en tránsito
+3. **Seguridad:** Prevenir ataques de spoofing o replay
+
+**Implementación:**
+
+```java
+public class WebhookValidator {
+    
+    // Valida la firma del webhook
+    public static boolean validateSignature(String payload, String receivedSignature) {
+        String calculatedSignature = calculateSignature(payload);
+        return calculatedSignature.equals(receivedSignature);
+    }
+    
+    // Calcula HMAC-SHA256 usando EVENTS_KEY
+    public static String calculateSignature(String payload) {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec secretKey = new SecretKeySpec(
+            WompiConfig.EVENTS_KEY.getBytes(),
+            "HmacSHA256"
+        );
+        mac.init(secretKey);
+        byte[] hash = mac.doFinal(payload.getBytes());
+        return bytesToHex(hash);
+    }
+    
+    // Extrae el tipo de evento
+    public static String extractEventType(String payload) {
+        // Parse JSON y retorna "event" field
+    }
+}
+```
+
+**Ejemplo de uso:**
+
+```java
+// Recibir webhook de Wompi
+String webhookPayload = request.getBody(); // JSON completo
+String signature = request.getHeader("X-Signature");
+
+// Validar autenticidad
+if (WebhookValidator.validateSignature(webhookPayload, signature)) {
+    // ✓ Webhook legítimo de Wompi
+    String eventType = WebhookValidator.extractEventType(webhookPayload);
+    processEvent(eventType, webhookPayload);
+} else {
+    // ✗ Posible ataque - rechazar webhook
+    logSecurityIncident();
+}
+```
+
+**Tipos de eventos soportados:**
+
+| Evento | Constante | Cuándo ocurre |
+|--------|-----------|---------------|
+| `transaction.updated` | `EVENT_TRANSACTION_UPDATED` | Transacción cambia de estado |
+| `payment.approved` | `EVENT_PAYMENT_APPROVED` | Pago aprobado exitosamente |
+| `payment.declined` | `EVENT_PAYMENT_DECLINED` | Pago rechazado |
+
+**Estructura típica de un webhook:**
+
+```json
+{
+  "event": "transaction.updated",
+  "data": {
+    "transaction": {
+      "id": "123-uuid",
+      "status": "APPROVED",
+      "amount_in_cents": 5000000,
+      ...
+    }
+  },
+  "sent_at": "2026-05-02T10:30:00Z",
+  "timestamp": 1714650600,
+  "signature": {
+    "checksum": "abc123..."
+  }
+}
+```
+
+**Configuración:**
+
+La llave de eventos está en `WompiConfig.java`:
+```java
+public static final String EVENTS_KEY = "stagtest_events_2PDUmhMywUkvb1LvxYnayFbmofT7w39N";
+```
+
+**Casos de uso en producción:**
+
+1. **Actualización de base de datos:** Al recibir `transaction.updated`, actualizar estado en BD
+2. **Notificaciones al usuario:** Enviar email/SMS cuando `payment.approved`
+3. **Reversiones:** Manejar `payment.declined` para revertir inventario
+4. **Auditoría:** Registrar todos los eventos para trazabilidad
+
+---
+
 ### 2. Modelos de Datos (models/)
 
 **Propósito:** Representar estructuras de datos JSON como POJOs
@@ -575,6 +689,85 @@ Según la API de Wompi:
 
 ---
 
+#### ValidateWebhookSignature.java - Validación de Webhooks
+
+**Propósito:** Validar la autenticidad e integridad de webhooks enviados por Wompi
+
+**¿Qué valida?**
+
+Cuando Wompi envía un webhook (notificación de evento), esta Task verifica:
+- ✅ Que el webhook proviene realmente de Wompi (autenticidad)
+- ✅ Que el payload no fue modificado (integridad)
+- ✅ Que la firma HMAC-SHA256 es correcta
+
+**Implementación:**
+
+```java
+public class ValidateWebhookSignature implements Task {
+    
+    public static ValidateWebhookSignature of(String payload, String signature) {
+        return new ValidateWebhookSignature(payload, signature);
+    }
+    
+    @Override
+    @Step("{0} valida la firma del webhook de Wompi")
+    public <T extends Actor> void performAs(T actor) {
+        // 1. Validar firma
+        boolean isValid = WebhookValidator.validateSignature(payload, receivedSignature);
+        
+        // 2. Almacenar resultado
+        actor.remember("webhookValid", isValid);
+        
+        // 3. Extraer tipo de evento
+        String eventType = WebhookValidator.extractEventType(payload);
+        actor.remember("webhookEventType", eventType);
+        
+        // 4. Si inválido, lanzar excepción de seguridad
+        if (!isValid) {
+            throw new SecurityException("Firma del webhook inválida - posible ataque");
+        }
+    }
+}
+```
+
+**Uso en escenarios:**
+
+```java
+// Simular recepción de webhook de Wompi
+String webhookPayload = "{\"event\":\"transaction.updated\",\"data\":{...}}";
+String signature = "abc123..."; // Firma enviada por Wompi
+
+// El actor valida el webhook
+merchant.attemptsTo(
+    ValidateWebhookSignature.of(webhookPayload, signature)
+);
+
+// Verificar que es auténtico
+merchant.should(
+    seeThat(ValidateWebhookEvent.isAuthentic(), is(true)),
+    seeThat(ValidateWebhookEvent.eventType(), equalTo("transaction.updated"))
+);
+```
+
+**Escenario de prueba típico:**
+
+```gherkin
+Escenario: Validar webhook de transacción actualizada
+  Dado que he creado una transacción con PSE
+  Cuando Wompi envía un webhook de actualización de estado
+  Entonces debo validar la firma del webhook
+  Y el tipo de evento debe ser "transaction.updated"
+  Y el webhook debe ser marcado como auténtico
+```
+
+**Seguridad:**
+
+- Si la firma no coincide → `SecurityException`
+- Previene ataques de spoofing (alguien suplantando a Wompi)
+- Detecta modificaciones en el payload durante transmisión
+
+---
+
 ### 4. Questions (questions/)
 
 **Propósito:** Obtener información del sistema para validar
@@ -622,6 +815,88 @@ public void validateResponse() {
 ```
 
 ---
+
+#### ValidateWebhookEvent.java - Validaciones de Webhooks
+
+**Propósito:** Questions para verificar webhooks recibidos de Wompi
+
+**Questions disponibles:**
+
+```java
+public class ValidateWebhookEvent {
+    
+    // ¿El webhook es auténtico (firma válida)?
+    public static Question<Boolean> isAuthentic() {
+        return actor -> actor.recall("webhookValid");
+    }
+    
+    // ¿Cuál es el tipo de evento?
+    public static Question<String> eventType() {
+        return actor -> actor.recall("webhookEventType");
+    }
+    
+    // ¿Es un tipo de evento conocido?
+    public static Question<Boolean> isKnownEventType() {
+        return actor -> {
+            String type = actor.recall("webhookEventType");
+            return type.equals(WompiConfig.EVENT_TRANSACTION_UPDATED) ||
+                   type.equals(WompiConfig.EVENT_PAYMENT_APPROVED) ||
+                   type.equals(WompiConfig.EVENT_PAYMENT_DECLINED);
+        };
+    }
+    
+    // ¿Es una actualización de transacción?
+    public static Question<Boolean> isTransactionUpdated();
+    
+    // ¿Es un pago aprobado?
+    public static Question<Boolean> isPaymentApproved();
+    
+    // ¿Es un pago rechazado?
+    public static Question<Boolean> isPaymentDeclined();
+    
+    // Obtener payload completo
+    public static Question<String> payload();
+}
+```
+
+**Ejemplo de uso en tests:**
+
+```java
+// Después de validar webhook
+merchant.attemptsTo(
+    ValidateWebhookSignature.of(payload, signature)
+);
+
+// Verificar con Questions
+merchant.should(
+    seeThat("Webhook auténtico", 
+            ValidateWebhookEvent.isAuthentic(), 
+            is(true)),
+    seeThat("Tipo de evento", 
+            ValidateWebhookEvent.eventType(), 
+            equalTo("transaction.updated")),
+    seeThat("Evento conocido", 
+            ValidateWebhookEvent.isKnownEventType(), 
+            is(true))
+);
+
+// Verificar tipo específico
+if (ValidateWebhookEvent.isPaymentApproved().answeredBy(merchant)) {
+    // Procesar pago aprobado
+    notifyCustomer();
+    updateInventory();
+}
+```
+
+**Implementación en el proyecto:** ✅ Completado
+- ✅ isAuthentic() - Valida autenticidad
+- ✅ eventType() - Extrae tipo de evento
+- ✅ isKnownEventType() - Verifica si es evento esperado
+- ✅ isTransactionUpdated() - Evento de actualización
+- ✅ isPaymentApproved() - Pago aprobado
+- ✅ isPaymentDeclined() - Pago rechazado
+- ✅ payload() - Obtiene JSON completo
+
 
 ### 5. Step Definitions (stepdefinitions/)
 
@@ -748,6 +1023,8 @@ public class PaymentRunnerIT {
 | 1 | Transacción PSE válida | Happy | 201 Created, Status PENDING/APPROVED | ✅ |
 | 2 | Credenciales inválidas | Negative | 401/403 Unauthorized | ✅ |
 | 3 | Datos incompletos | Negative | 400/422 Bad Request | ✅ |
+| 4 | Webhook auténtico | Security | Firma válida, evento correcto | ✅ |
+| 5 | Webhook inválido | Security/Negative | SecurityException, rechazado | ✅ |
 
 ---
 

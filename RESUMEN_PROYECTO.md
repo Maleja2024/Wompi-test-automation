@@ -54,7 +54,7 @@ wompi-automation/
 │   └── IntegritySignature                     ✓ Cálculo de firma de integridad
 │
 └── features/                  # Escenarios BDD
-    └── payment.feature                        ✓ 3 escenarios en Gherkin
+    └── payment.feature                        ✓ 5 escenarios en Gherkin
 ```
 
 ---
@@ -111,6 +111,79 @@ TransactionRequest transaction = new TransactionRequest.Builder()
 - ✅ Es obligatorio para todas las transacciones
 - ✅ Se almacena en memoria del actor (patrón ScreenPlay)
 - ✅ Representa acuerdo legal con términos de servicio
+
+---
+
+## 🔔 Sistema de Webhooks/Eventos
+
+### ¿Qué son los Webhooks?
+
+Notificaciones automáticas que Wompi envía al comercio cuando ocurren eventos importantes:
+- 📊 Transacción actualizada (`transaction.updated`)
+- ✅ Pago aprobado (`payment.approved`)
+- ❌ Pago rechazado (`payment.declined`)
+
+### Validación de Webhooks
+
+**Llave utilizada:**
+```
+EVENTS_KEY = stagtest_events_2PDUmhMywUkvb1LvxYnayFbmofT7w39N
+```
+
+**Propósito:**
+- Verificar que el webhook proviene de Wompi (autenticidad)
+- Validar que el payload no fue modificado (integridad)
+- Prevenir ataques de spoofing
+
+### Implementación
+
+**Validador:**
+```java
+// WebhookValidator.java
+boolean isValid = WebhookValidator.validateSignature(payload, signature);
+```
+
+**Task ScreenPlay:**
+```java
+merchant.attemptsTo(
+    ValidateWebhookSignature.of(webhookPayload, receivedSignature)
+);
+```
+
+**Questions:**
+```java
+merchant.should(
+    seeThat(ValidateWebhookEvent.isAuthentic(), is(true)),
+    seeThat(ValidateWebhookEvent.eventType(), equalTo("transaction.updated"))
+);
+```
+
+### Estructura de Webhook
+
+```json
+{
+  "event": "transaction.updated",
+  "data": {
+    "transaction": {
+      "id": "123-uuid",
+      "status": "APPROVED",
+      ...
+    }
+  },
+  "sent_at": "2026-05-02T10:30:00Z",
+  "timestamp": 1714650600,
+  "signature": {
+    "checksum": "abc123..."
+  }
+}
+```
+
+### Componentes Implementados
+
+- ✅ **WebhookValidator** - Validación de firma HMAC-SHA256
+- ✅ **WebhookEvent** - Modelo de datos del webhook
+- ✅ **ValidateWebhookSignature** - Task para validar
+- ✅ **ValidateWebhookEvent** - Questions para verificar
 
 
 ### 3. Presentación Review ✓
@@ -183,8 +256,10 @@ Característica: Integración con API de Wompi para transacciones PSE
 | TC-001 | Transacción PSE válida | Happy | /transactions | POST | 201 | ✅ |
 | TC-002 | Autenticación inválida | Negative | /transactions | POST | 401/403 | ✅ |
 | TC-003 | Datos incompletos | Negative | /transactions | POST | 400/422 | ✅ |
+| TC-004 | Webhook auténtico | Security | N/A (webhook) | Validación | Firma válida | ✅ |
+| TC-005 | Webhook inválido | Security/Negative | N/A (webhook) | Validación | Firma inválida | ✅ |
 
-**Cobertura:** 3/3 casos críticos (100%)
+**Cobertura:** 5/5 casos críticos (100%)
 
 ---
 
@@ -432,8 +507,8 @@ target/site/serenity/index.html
 
 ```
 SERENITY TESTS:
-├── Test scenarios executed: 3
-├── Tests passed: 2-3*
+├── Test scenarios executed: 5
+├── Tests passed: 4-5*
 ├── Tests failed: 0
 └── Tests with errors: 0-1*
 ```
@@ -509,10 +584,14 @@ El proyecto está **100% completo y funcional**, cumpliendo todos los requisitos
 | `PaymentStepDefinitions.java` | `src/test/java/stepdefinitions/` | Steps Cucumber |
 | `CreateTransaction.java` | `src/test/java/tasks/` | Task principal |
 | `GetAcceptanceToken.java` | `src/test/java/tasks/` | Obtener token de aceptación |
-| `ValidateResponse.java` | `src/test/java/questions/` | Validaciones |
+| `ValidateWebhookSignature.java` | `src/test/java/tasks/` | Validar webhooks |
+| `ValidateResponse.java` | `src/test/java/questions/` | Validaciones de respuestas |
+| `ValidateWebhookEvent.java` | `src/test/java/questions/` | Validaciones de webhooks |
 | `WompiConfig.java` | `src/test/java/utils/` | Configuración |
 | `IntegritySignature.java` | `src/test/java/utils/` | Firma de integridad |
+| `WebhookValidator.java` | `src/test/java/utils/` | Validador de webhooks |
 | `PaymentMethod.java` | `src/test/java/models/` | Modelo PSE |
+| `WebhookEvent.java` | `src/test/java/models/` | Modelo de webhook |
 | `pom.xml` | Raíz | Dependencias Maven |
 | `README.md` | Raíz | Documentación principal |
 

@@ -83,7 +83,7 @@ mvn verify -Dcucumber.filter.tags="@PSE"
 
 ### Tests Ejecutados
 
-El proyecto ejecutará **3 escenarios**:
+El proyecto ejecutará **5 escenarios**:
 
 #### 1. ✅ Creación exitosa de transacción con PSE (Happy Path)
 - **Validaciones:**
@@ -210,7 +210,7 @@ Los reportes de Serenity incluyen:
 ### El proyecto es exitoso si:
 
 - [x] Compila sin errores
-- [x] Al menos 2 de 3 tests pasan
+- [x] Al menos 4 de 5 tests pasan
 - [x] Se genera reporte Serenity
 - [x] Se pueden ver requests/responses en el reporte
 - [x] El código sigue patrón ScreenPlay

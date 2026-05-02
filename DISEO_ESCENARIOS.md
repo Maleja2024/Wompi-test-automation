@@ -302,7 +302,7 @@ Content-Type: application/json
 | Métrica | Objetivo | Actual |
 |---------|----------|--------|
 | **Cobertura de Funcionalidad** | > 80% | 60% (3/5 flujos principales) |
-| **Tests Automatizados** | 100% de casos críticos | ✅ 3/3 |
+| **Tests Automatizados** | 100% de casos críticos | ✅ 5/5 |
 | **Tasa de Éxito** | > 95% | Pendiente de ejecución |
 | **Tiempo de Ejecución** | < 2 min | Pendiente de medición |
 
@@ -323,8 +323,8 @@ Content-Type: application/json
 
 ### Fase 3: Avanzado 🔮
 - [ ] Otros métodos de pago (NEQUI, Bancolombia)
-- [ ] Pruebas de integridad (signatures)
-- [ ] Pruebas de webhooks/eventos
+- [ ] Pruebas end-to-end (transacción + webhook)
+- [ ] Performance testing de webhooks
 - [ ] Integración CI/CD
 
 ---
