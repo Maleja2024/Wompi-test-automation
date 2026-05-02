@@ -192,19 +192,11 @@ public class PaymentStepDefinitions {
         // Usar una firma completamente inválida
         String invalidSignature = "invalid_signature_attack_attempt_12345";
 
-        // Intentar validar el webhook con firma inválida
-        // Esto debería fallar y lanzar SecurityException
-        try {
-            merchant.attemptsTo(
-                    ValidateWebhookSignature.of(webhookPayload, invalidSignature)
-            );
-            merchant.remember("webhookValidationFailed", false);
-        } catch (SecurityException e) {
-            // Se esperaba esta excepción - webhook rechazado correctamente
-            merchant.remember("webhookValidationFailed", true);
-            merchant.remember("securityExceptionMessage", e.getMessage());
-            System.out.println("✓ Webhook rechazado correctamente: " + e.getMessage());
-        }
+        // El actor valida el webhook con firma inválida
+        // La Task NO lanza excepción, solo guarda el resultado
+        merchant.attemptsTo(
+                ValidateWebhookSignature.of(webhookPayload, invalidSignature)
+        );
     }
 
     @Then("debo poder validar la firma correctamente")
@@ -227,29 +219,64 @@ public class PaymentStepDefinitions {
 
     @Then("el webhook debe ser rechazado por seguridad")
     public void webhookRejected() {
-        Boolean wasRejected = merchant.recall("webhookValidationFailed");
+        // Obtener el resultado de la validación
+        Boolean isValid = merchant.recall("webhookValid");
+        String validationResult = merchant.recall("webhookValidationResult");
 
-        if (wasRejected == null || !wasRejected) {
+        // Validar que el webhook fue marcado como inválido
+        if (isValid == null) {
             throw new AssertionError(
-                    "El webhook con firma inválida NO fue rechazado - FALLO DE SEGURIDAD"
+                    "TEST BROKEN: No se encontró resultado de validación del webhook. " +
+                    "Verificar que la Task ValidateWebhookSignature se ejecutó correctamente."
             );
         }
 
+        if (isValid) {
+            throw new AssertionError(
+                    "FALLO DE SEGURIDAD: El webhook con firma inválida fue aceptado como válido. " +
+                    "Resultado: " + validationResult
+            );
+        }
+
+        // Si llegamos aquí, el webhook fue correctamente rechazado
         System.out.println("✓ Webhook rechazado correctamente por seguridad");
     }
 
     @Then("debe indicar que la firma es inválida")
     public void validateInvalidSignatureMessage() {
-        String errorMessage = merchant.recall("securityExceptionMessage");
+        String validationMessage = merchant.recall("webhookValidationMessage");
+        Boolean isValid = merchant.recall("webhookValid");
 
-        if (errorMessage == null ||
-            !(errorMessage.toLowerCase().contains("inval") ||
-              errorMessage.toLowerCase().contains("firma"))) {
+        // Validar que se obtuvo un mensaje
+        if (validationMessage == null || validationMessage.trim().isEmpty()) {
             throw new AssertionError(
-                    "El mensaje de error no indica que la firma es inválida. Mensaje recibido: " + errorMessage
+                    "TEST BROKEN: No se obtuvo mensaje de validación del webhook."
             );
         }
 
-        System.out.println("✓ Mensaje de error correcto: " + errorMessage);
+        // Validar que el webhook fue marcado como inválido
+        if (isValid != null && isValid) {
+            throw new AssertionError(
+                    "INCONSISTENCIA: El mensaje indica firma inválida pero webhookValid=true. " +
+                    "Mensaje: " + validationMessage
+            );
+        }
+
+        // Validar que el mensaje indica que la firma es inválida
+        String lowerMessage = validationMessage.toLowerCase();
+        boolean hasInvalidKeyword = lowerMessage.contains("inval") ||
+                                     lowerMessage.contains("firma") ||
+                                     lowerMessage.contains("signature") ||
+                                     lowerMessage.contains("ataque") ||
+                                     lowerMessage.contains("attack");
+
+        if (!hasInvalidKeyword) {
+            throw new AssertionError(
+                    "El mensaje de validación no indica claramente que la firma es inválida. " +
+                    "Mensaje recibido: " + validationMessage
+            );
+        }
+
+        System.out.println("✓ Mensaje de error correcto: " + validationMessage);
     }
 }

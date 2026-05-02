@@ -60,9 +60,12 @@ public class ValidateWebhookSignature implements Task {
         if (isValid) {
             System.out.println("✓ Firma del webhook válida");
             System.out.println("  Tipo de evento: " + eventType);
+            actor.remember("webhookValidationResult", "VALID");
+            actor.remember("webhookValidationMessage", "Firma válida - Webhook auténtico");
         } else {
             System.out.println("✗ Firma del webhook INVÁLIDA - Posible ataque");
-            throw new SecurityException(
+            actor.remember("webhookValidationResult", "INVALID");
+            actor.remember("webhookValidationMessage",
                 "La firma del webhook no es válida. " +
                 "Esto podría indicar un intento de ataque o modificación del payload."
             );
