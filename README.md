@@ -19,7 +19,7 @@ Pruebas automatizadas para la API de Wompi utilizando el **patrón ScreenPlay** 
 | **[INSTRUCCIONES_EJECUCION.md](INSTRUCCIONES_EJECUCION.md)** | Cómo ejecutar paso a paso       | ▶️ Para correr los tests             |
 | **[DOCUMENTACION_PROYECTO.md](DOCUMENTACION_PROYECTO.md)**   | Explicación detallada técnica   | 📖 Para entender ScreenPlay y BDD    |
 | **[GUIA_PRESENTACION.md](GUIA_PRESENTACION.md)**             | Preparación para review (5 min) | 🎤 Para la presentación              |
-| **[DISEÑO_ESCENARIOS.md](DISEO_ESCENARIOS.md)**              | Matriz de casos de prueba       | 🧪 Para ver la estrategia de testing |
+| **[DISEÑO_ESCENARIOS.md](DISEÑO_ESCENARIOS.md)**             | Matriz de casos de prueba       | 🧪 Para ver la estrategia de testing |
 
 ---
 
@@ -342,20 +342,26 @@ PSE_FINANCIAL_INSTITUTION_CODE ="1040" // Banco Agrario
 ## 🔑 Funcionalidades Clave
 
 ### 1. Sistema de Acceptance Token
+
 El proyecto implementa la obtención automática del `acceptance_token` requerido por Wompi:
+
 - Task: `GetAcceptanceToken.fromWompi()`
 - Endpoint: `GET /merchants/{public_key}`
 - Uso: Obligatorio para todas las transacciones
 
 ### 2. Validación de Webhooks con HMAC-SHA256
+
 Implementación completa de validación de seguridad para webhooks:
+
 - Utilidad: `WebhookValidator`
 - Algoritmo: HMAC-SHA256
 - Propósito: Prevenir ataques de spoofing y garantizar integridad
 - Llave: `EVENTS_KEY` configurada en WompiConfig
 
 ### 3. Firma de Integridad
+
 Cálculo automático de firmas de integridad para transacciones:
+
 - Utilidad: `IntegritySignature`
 - Algoritmo: SHA-256
 - Llave: `INTEGRITY_KEY`
